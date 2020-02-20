@@ -13,7 +13,6 @@ class MaskedNet(nn.Module):
 
     def checkpoint(self):
         for m in self.mask_modules: m.checkpoint()
-        
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.Linear):
                 m.checkpoint = copy.deepcopy(m.state_dict())
