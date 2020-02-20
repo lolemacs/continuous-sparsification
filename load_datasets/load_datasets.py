@@ -26,7 +26,6 @@ def generate_loaders(val_set_size, batch_size, n_workers):
     train_indices = []
     val_indices = []
     for label, idxs in label_dict.items():
-        print(idxs)
         np.random.shuffle(idxs)
         train_indices += idxs[(val_set_size//n_classes):]
         val_indices += idxs[:(val_set_size//n_classes)]
