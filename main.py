@@ -39,7 +39,6 @@ if args.cuda:
     torch.cuda.manual_seed_all(args.seed)
     cudnn.benchmark = True
 
-icp_params = {'mask_initial_value': args.mask_initial_value}
 train_loader, val_loader, test_loader = generate_loaders(args.val_set_size, args.batch_size, args.workers)
 
 model = ResNet(args.mask_initial_value)
