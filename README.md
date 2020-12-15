@@ -1,3 +1,5 @@
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/winning-the-lottery-with-continuous-1/network-pruning-on-imagenet-resnet-50-90)](https://paperswithcode.com/sota/network-pruning-on-imagenet-resnet-50-90?p=winning-the-lottery-with-continuous-1)
+
 # Continuous Sparsification
 
 Implementation of Continuous Sparsification (CS), a method based on l_0 regularization to find sparse neural networks, proposed in [[Winning the Lottery with Continuous Sparsification](https://arxiv.org/abs/1912.04427)].
