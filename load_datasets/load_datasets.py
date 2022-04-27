@@ -1,5 +1,7 @@
 from torchvision import datasets, transforms
 from torch.utils.data.sampler import SubsetRandomSampler
+import torch.distributed as dist
+import torch.utils.data.distributed
 import numpy as np
 import torch
 
@@ -43,3 +45,32 @@ def generate_loaders(val_set_size, batch_size, n_workers):
         batch_size=batch_size, num_workers=n_workers, pin_memory=True) 
 
     return train_loader, val_loader, test_loader
+
+def ImageNet_generate_loaders(batch_size, n_workers, distributed):
+    mean=[0.485, 0.456, 0.406]
+    std=[0.229, 0.224, 0.225]
+    train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomCrop(224), transforms.ToTensor(), transforms.Normalize(mean, std)])
+    val_transform = transforms.Compose([transforms.Resize(256),transforms.CenterCrop(224),transforms.ToTensor(),transform.Normalize(mean, std)]) 
+      
+    n_classes = 1000
+    
+    traindir = '/mnt/nfs/sandbox/ai-research_tmp/ILSVRC2012_img_train'
+    valdir = '/mnt/nfs/sandbox/ai-research_tmp/ILSVRC2012_img_val_for_ImageFolder'
+
+    train_dataset = datasets.ImageFolder(traindir, transform=train_transform)
+    val_dataset = datasets.ImageFolder(valdir, train=True, download=False, transform=val_transform)
+
+    if distributed:
+        train_sampler = torch.utils.data.distributed.DistributesSampler(train_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
+    else:
+        train_sampler = None
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=(train_sampler is None),
+        num_workers=n_workers, pin_memory=True, sampler=train_sampler)
+
+    val_loader = torch.utils.data.Dataloader(
+        val_dataset, batch_size=batch_size, shuffle=False,
+        num_workers=n_workers, pin_memory=True) 
+
+    return train_loader, val_loader

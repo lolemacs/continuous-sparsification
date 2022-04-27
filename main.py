@@ -1,3 +1,4 @@
+import sys
 import argparse
 import torch
 import torch.nn as nn
@@ -10,9 +11,14 @@ from models import *
 from load_datasets import *
 
 parser = argparse.ArgumentParser(description='Training a ResNet on CIFAR-10 with Continuous Sparsification')
+parser.add_argument('--dataset', type=str, defalt='cifar10', help='which dataset to use(cifar10 or ImageNet)')
+parser.add_argument('--distributed', type=bool, defalut=False,help='use distributed training or not')
+parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
+parser.add_argument('--dist-url', default='tcp://172.17.0.9:48935', type=str, help='url used to set up distributed training')
 parser.add_argument('--which-gpu', type=int, default=0, help='which GPU to use')
-parser.add_argument('--batch-size', type=int, default=128, metavar='N', help='input batch size for training/val/test (default: 128)')
-parser.add_argument('--epochs', type=int, default=85, help='number of epochs to train (default: 85)')
+paeser.add_argument('--num-classes', type=int, help='number of classes')
+parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training/val/test (default: 128)')
+parser.add_argument('--epochs', type=int, default=90, help='number of epochs to train (default: 85)')
 parser.add_argument('--rounds', type=int, default=3, help='number of rounds to train (default: 3)')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.1)')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
@@ -29,7 +35,10 @@ parser.add_argument('--mask-initial-value', type=float, default=0., help='initia
 args = parser.parse_args()
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-torch.cuda.set_device(args.which_gpu)
+num_devices = torch.cuda.device_count()
+if args.workers >= num_devices:
+    print('number of workers is more than number of available GPU!!')
+    sys.exit()
 
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
@@ -39,11 +48,37 @@ if args.cuda:
     torch.cuda.manual_seed_all(args.seed)
     cudnn.benchmark = True
 
-train_loader, val_loader, test_loader = generate_loaders(args.val_set_size, args.batch_size, args.workers)
+if args.dataset == 'cifar10':
+    train_loader, val_loader, test_loader = generate_loaders(args.val_set_size, args.batch_size, args.workers)
+# TODO:Image Netのテストデータがあるはずなので格納したら対応するclassと以下の出力を書き換える
+elif args.dataset == 'ImageNet':
+    train_loader, val_loader = ImageNet_generate_loaders(args.batch_size, args.workers, args.distributed)
+else:
+    print('dataset is not available on this program!!')
+    sys.exit()
 
-model = ResNet(args.mask_initial_value)
+# num_class=1000 if dataset is ImageNet, num_classes=10 if dataset is cifar10.
+# TODO: ResNet50を実装する（ここで呼び出すResNetはResNet18）
+model = ResNet(args.num_classes, args.mask_initial_value)
 
-if args.cuda: model.cuda()
+if not args.cuda:
+    print('using CPU, this will be slow')
+elif args.distributed:
+    if args.which_gpu is not None:
+        torch.cuda.set_device(args.which_gpu)
+        model.cuda(args.which_gpu)
+        args.batch_size = int(args.batch_size/args.workers)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.which_gpu])
+    else:
+        model.cuda()
+        # DistributedDataParallel will divide and allocate batch_size to all
+        # available GPUs if device_ids are not set
+        model = torch.nn.parallel.DistributedDataParallel(model)
+elif args.which_gpu is not None:
+    torch.cuda.set_device(args.which_gpu)
+    model = model.cuda(args.gpu)
+else:
+    model = torch.nn.DataParallel(model).cuda()
 print(model)
 
 def adjust_learning_rate(optimizer, epoch):
@@ -78,7 +113,7 @@ def train(outer_round):
             for optimizer in optimizers: optimizer.step()
 
         val_acc = test(val_loader)
-        test_acc = test(test_loader)
+        #test_acc = test(test_loader)
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}\tTest acc: {}'.format(model.temp, remaining_weights, val_acc, test_acc))
         

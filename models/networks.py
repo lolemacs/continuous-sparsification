@@ -62,6 +62,7 @@ class ResStage(nn.Module):
         out = self.block3(out, temp, ticket)
         return out
 
+# ResNet18
 class ResNet(MaskedNet):
     def __init__(self, mask_initial_value=0.):
         super(ResNet, self).__init__()
@@ -99,3 +100,5 @@ class ResNet(MaskedNet):
         out = out.view(x.size(0), -1)
         out = self.classifier(out)
         return out
+
+#TODO:ResNet50書く

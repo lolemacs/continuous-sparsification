@@ -1,0 +1,1 @@
+python3 main.py --distributed True --dataset ImageNet --workers 4 --num-classes 1000
