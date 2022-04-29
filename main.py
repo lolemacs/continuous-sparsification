@@ -8,15 +8,19 @@ import torch.backends.cudnn as cudnn
 import numpy as np
 import random
 from models import *
+import torch.distributed as dist
+import torch.utils.data.distributed
 from load_datasets import *
 
-parser = argparse.ArgumentParser(description='Training a ResNet on CIFAR-10 with Continuous Sparsification')
-parser.add_argument('--dataset', type=str, defalt='cifar10', help='which dataset to use(cifar10 or ImageNet)')
-parser.add_argument('--distributed', type=bool, defalut=False,help='use distributed training or not')
+parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
+parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
+parser.add_argument('--world-size', type=int, default=4, help='world_size')
+parser.add_argument('--rank',type=int, default=1, help='node rank for distributed training')
+parser.add_argument('--distributed', type=bool, default=True,help='use distributed training or not')
 parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
-parser.add_argument('--dist-url', default='tcp://172.17.0.9:48935', type=str, help='url used to set up distributed training')
-parser.add_argument('--which-gpu', type=int, default=0, help='which GPU to use')
-paeser.add_argument('--num-classes', type=int, help='number of classes')
+parser.add_argument('--dist-url', default='tcp://172.17.0.9:39999', type=str, help='url used to set up distributed training')
+parser.add_argument('--which-gpu', type=int, default=1, help='which GPU to use')
+parser.add_argument('--num-classes', type=int, help='number of classes')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training/val/test (default: 128)')
 parser.add_argument('--epochs', type=int, default=90, help='number of epochs to train (default: 85)')
 parser.add_argument('--rounds', type=int, default=3, help='number of rounds to train (default: 3)')
@@ -36,10 +40,10 @@ args = parser.parse_args()
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 num_devices = torch.cuda.device_count()
-if args.workers >= num_devices:
-    print('number of workers is more than number of available GPU!!')
+if args.world_size > num_devices:
+    print('number of world size is more than number of available GPU!!')
     sys.exit()
-
+print('number of devices is {}'.format(num_devices))
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 random.seed(args.seed)
@@ -47,6 +51,11 @@ random.seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed_all(args.seed)
     cudnn.benchmark = True
+print('seed is set.')
+
+if args.distributed:
+    dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,world_size=args.world_size, rank=args.rank)
+print('init_process group is set.')
 
 if args.dataset == 'cifar10':
     train_loader, val_loader, test_loader = generate_loaders(args.val_set_size, args.batch_size, args.workers)
@@ -58,16 +67,16 @@ else:
     sys.exit()
 
 # num_class=1000 if dataset is ImageNet, num_classes=10 if dataset is cifar10.
-# TODO: ResNet50を実装する（ここで呼び出すResNetはResNet18）
-model = ResNet(args.num_classes, args.mask_initial_value)
-
+# （memo）他のデータセット適用の際のinputの変換をoneticket to win them all からちゃんと読み解く必要ある
+model = ResNet50(args.num_classes, args.mask_initial_value)
+print(model)
 if not args.cuda:
     print('using CPU, this will be slow')
 elif args.distributed:
     if args.which_gpu is not None:
         torch.cuda.set_device(args.which_gpu)
         model.cuda(args.which_gpu)
-        args.batch_size = int(args.batch_size/args.workers)
+        args.batch_size = int(args.batch_size/args.world_size)
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.which_gpu])
     else:
         model.cuda()
@@ -76,7 +85,7 @@ elif args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model)
 elif args.which_gpu is not None:
     torch.cuda.set_device(args.which_gpu)
-    model = model.cuda(args.gpu)
+    model = model.cuda(args.which_gpu)
 else:
     model = torch.nn.DataParallel(model).cuda()
 print(model)

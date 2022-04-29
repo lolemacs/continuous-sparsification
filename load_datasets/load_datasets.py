@@ -49,8 +49,8 @@ def generate_loaders(val_set_size, batch_size, n_workers):
 def ImageNet_generate_loaders(batch_size, n_workers, distributed):
     mean=[0.485, 0.456, 0.406]
     std=[0.229, 0.224, 0.225]
-    train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomCrop(224), transforms.ToTensor(), transforms.Normalize(mean, std)])
-    val_transform = transforms.Compose([transforms.Resize(256),transforms.CenterCrop(224),transforms.ToTensor(),transform.Normalize(mean, std)]) 
+    train_transform = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), transforms.Normalize(mean, std)])
+    val_transform = transforms.Compose([transforms.Resize(256),transforms.CenterCrop(224),transforms.ToTensor(),transforms.Normalize(mean, std)]) 
       
     n_classes = 1000
     
@@ -58,10 +58,10 @@ def ImageNet_generate_loaders(batch_size, n_workers, distributed):
     valdir = '/mnt/nfs/sandbox/ai-research_tmp/ILSVRC2012_img_val_for_ImageFolder'
 
     train_dataset = datasets.ImageFolder(traindir, transform=train_transform)
-    val_dataset = datasets.ImageFolder(valdir, train=True, download=False, transform=val_transform)
+    val_dataset = datasets.ImageFolder(valdir, transform=val_transform)
 
     if distributed:
-        train_sampler = torch.utils.data.distributed.DistributesSampler(train_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, num_replicas=dist.get_world_size(), rank=dist.get_rank())
     else:
         train_sampler = None
 
@@ -69,7 +69,7 @@ def ImageNet_generate_loaders(batch_size, n_workers, distributed):
         train_dataset, batch_size=batch_size, shuffle=(train_sampler is None),
         num_workers=n_workers, pin_memory=True, sampler=train_sampler)
 
-    val_loader = torch.utils.data.Dataloader(
+    val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False,
         num_workers=n_workers, pin_memory=True) 
 
