@@ -30,8 +30,8 @@ class SoftMaskedConv2d(nn.Module):
     def compute_mask(self, temp, ticket):
         scaling = 1. / sigmoid(self.mask_initial_value)
         if ticket: mask = (self.mask_weight > 0).float()
-        else: mask = F.sigmoid(temp * self.mask_weight)
-        return scaling * mask      
+        else: mask = torch.sigmoid(temp * self.mask_weight)
+        return scaling * mask
         
     def prune(self, temp):
         self.mask_weight.data = torch.clamp(temp * self.mask_weight.data, max=self.mask_initial_value)   
