@@ -16,26 +16,26 @@ parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or C
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
 parser.add_argument('--world-size', type=int, default=4, help='world_size')
 parser.add_argument('--rank',type=int, default=1, help='node rank for distributed training')
-parser.add_argument('--distributed', type=bool, default=True,help='use distributed training or not')
+parser.add_argument('--distributed', type=bool, default=False,help='use distributed training or not')
 parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
 parser.add_argument('--dist-url', default='tcp://172.17.0.9:39999', type=str, help='url used to set up distributed training')
-parser.add_argument('--which-gpu', type=int, default=1, help='which GPU to use')
+parser.add_argument('--which-gpu', type=int, default=0, help='which GPU to use')
 parser.add_argument('--num-classes', type=int, help='number of classes')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N', help='input batch size for training/val/test (default: 128)')
 parser.add_argument('--epochs', type=int, default=90, help='number of epochs to train (default: 85)')
-parser.add_argument('--rounds', type=int, default=3, help='number of rounds to train (default: 3)')
+parser.add_argument('--rounds', type=int, default=1, help='number of rounds to train (default: 3)')
 parser.add_argument('--lr', type=float, default=0.1, metavar='LR', help='learning rate (default: 0.1)')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
 parser.add_argument('--seed', type=int, default=1234, metavar='S', help='random seed (default: 1234)')
-parser.add_argument('--workers', type=int, default=2, help='number of data loading workers (default: 2)')
+parser.add_argument('--workers', type=int, default=4, help='number of data loading workers (default: 2)')
 parser.add_argument('--val-set-size', type=int, default=5000, help='how much of the training set to use for validation (default: 5000)')
-parser.add_argument('--lr-schedule', type=int, nargs='+', default=[56,71], help='epochs at which the learning rate will be dropped')
+parser.add_argument('--lr-schedule', type=int, nargs='+', default=[30,60], help='epochs at which the learning rate will be dropped')
 parser.add_argument('--lr-drops', type=float, nargs='+', default=[0.1, 0.1], help='how much to drop the lr at each epoch in the schedule')
 parser.add_argument('--decay', type=float, default=0.0001, help='weight decay (default: 0.0001)')
 parser.add_argument('--rewind-epoch', type=int, default=2, help='epoch to rewind weights to (default: 2)')
 parser.add_argument('--lmbda', type=float, default=1e-8, help='lambda for L1 mask regularization (default: 1e-8)')
 parser.add_argument('--final-temp', type=float, default=200, help='temperature at the end of each round (default: 200)')
-parser.add_argument('--mask-initial-value', type=float, default=0., help='initial value for mask parameters')
+parser.add_argument('--mask-initial-value', type=float, default=-0.01, help='initial value for mask parameters')
 args = parser.parse_args()
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -87,7 +87,7 @@ elif args.which_gpu is not None:
     torch.cuda.set_device(args.which_gpu)
     model = model.cuda(args.which_gpu)
 else:
-    model = torch.nn.DataParallel(model).cuda()
+    model = model.cuda()
 print(model)
 
 def adjust_learning_rate(optimizer, epoch):
@@ -151,8 +151,8 @@ weight_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mas
 mask_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mask' in p[0], model.named_parameters()))
 
 model.ticket = False
-weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=True, weight_decay=args.decay)
-mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=True)
+weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)
+mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
 optimizers = [weight_optim, mask_optim]
 for outer_round in range(args.rounds):
     print('--------- Round {} -----------'.format(outer_round))
@@ -161,7 +161,7 @@ for outer_round in range(args.rounds):
     if outer_round != args.rounds-1: model.prune()
 
 print('--------- Training final ticket -----------')
-optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=True, weight_decay=args.decay)]
+optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)]
 model.ticket = True
 model.rewind_weights()
 train(outer_round)

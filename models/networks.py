@@ -56,15 +56,15 @@ class Bottleneck(nn.Module):
         self.conv2 = Conv(output_channel, output_channel, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(output_channel)
 
-        self.conv3 = Conv(output_channel, expansion * output_channel, kernel_size=1, stride=2, padding=0)
+        self.conv3 = Conv(output_channel, expansion * output_channel, kernel_size=1, stride=stride, padding=0)
         self.bn3 = nn.BatchNorm2d(expansion * output_channel)
 
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
-        if expansion != 1:
-            self.downsample = Conv(input_channel, expansion * output_channel, kernel_size=1, stride=2, padding=0)
+        if expansion != 1 or stride!=1:
+            self.downsample = Conv(input_channel, expansion * output_channel, kernel_size=1, stride=stride, padding=0)
             self.bn_d = nn.BatchNorm2d(expansion * output_channel)
 
     def forward(self, x, temp, ticket):
@@ -82,6 +82,7 @@ class Bottleneck(nn.Module):
 
         if self.downsample is not None:
             residual = self.downsample(residual, temp, ticket)
+            #TODO:確認　論文によると、以下の層は必要ないかも。
             residual = self.bn_d(residual)
 
         out = self.relu(out + residual)
@@ -140,9 +141,6 @@ class ResNet(MaskedNet):
         out = self.stage3(out, self.temp, self.ticket)
         out = self.avgpool(out)
         out = out.view(x.size(0), -1)
-        # # temp
-        # size = out.size()
-        # #temp
         out = self.classifier(out)
         return out
 # function size is temporary
@@ -172,19 +170,19 @@ class ResNet50(MaskedNet):
         self.bottleneckblock11 = Bottleneck(Conv, 256, 64)
         self.bottleneckblock12 = Bottleneck(Conv, 256, 64)
         # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが4層）
-        self.bottleneckblock20 = Bottleneck(Conv, 256, 128)
+        self.bottleneckblock20 = Bottleneck(Conv, 256, 128, stride=2)
         self.bottleneckblock21 = Bottleneck(Conv, 512, 128)
         self.bottleneckblock22 = Bottleneck(Conv, 512, 128)
         self.bottleneckblock23 = Bottleneck(Conv, 512, 128)
         # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが6層）
-        self.bottleneckblock30 = Bottleneck(Conv, 512, 256)
+        self.bottleneckblock30 = Bottleneck(Conv, 512, 256, stride=2)
         self.bottleneckblock31 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock32 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock33 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock34 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock35 = Bottleneck(Conv, 1024, 256)
         # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが3層）
-        self.bottleneckblock40 = Bottleneck(Conv, 1024, 512)
+        self.bottleneckblock40 = Bottleneck(Conv, 1024, 512, stride=2)
         self.bottleneckblock41 = Bottleneck(Conv, 2048, 512)
         self.bottleneckblock42 = Bottleneck(Conv, 2048, 512)
 
@@ -206,23 +204,23 @@ class ResNet50(MaskedNet):
     def forward(self, x):
         out = F.relu(self.bn0(self.conv0(x, self.temp, self.ticket)), inplace=True)
         out = self.maxpool(out)
-        #out = self.bottleneckblock10(out, self.temp, self.ticket)
-        #out = self.bottleneckblock11(out, self.temp, self.ticket)
-        # out = self.bottleneckblock12(out, self.temp, self.ticket)
-        # out = self.bottleneckblock20(out, self.temp, self.ticket)
-        # out = self.bottleneckblock21(out, self.temp, self.ticket)
-        # out = self.bottleneckblock22(out, self.temp, self.ticket)
-        # out = self.bottleneckblock23(out, self.temp, self.ticket)
-        # out = self.bottleneckblock30(out, self.temp, self.ticket)
-        # out = self.bottleneckblock31(out, self.temp, self.ticket)
-        # out = self.bottleneckblock32(out, self.temp, self.ticket)
-        # out = self.bottleneckblock33(out, self.temp, self.ticket)
-        # out = self.bottleneckblock34(out, self.temp, self.ticket)
-        # out = self.bottleneckblock35(out, self.temp, self.ticket)
-        # out = self.bottleneckblock40(out, self.temp, self.ticket)
-        # out = self.bottleneckblock41(out, self.temp, self.ticket)
-        # out = self.bottleneckblock42(out, self.temp, self.ticket)
-        # out = self.avgpool(out)
-        # out = out.view(x.size(0), -1)
-        # out = self.classifier(out)
+        out = self.bottleneckblock10(out, self.temp, self.ticket)
+        out = self.bottleneckblock11(out, self.temp, self.ticket)
+        out = self.bottleneckblock12(out, self.temp, self.ticket)
+        out = self.bottleneckblock20(out, self.temp, self.ticket)
+        out = self.bottleneckblock21(out, self.temp, self.ticket)
+        out = self.bottleneckblock22(out, self.temp, self.ticket)
+        out = self.bottleneckblock23(out, self.temp, self.ticket)
+        out = self.bottleneckblock30(out, self.temp, self.ticket)
+        out = self.bottleneckblock31(out, self.temp, self.ticket)
+        out = self.bottleneckblock32(out, self.temp, self.ticket)
+        out = self.bottleneckblock33(out, self.temp, self.ticket)
+        out = self.bottleneckblock34(out, self.temp, self.ticket)
+        out = self.bottleneckblock35(out, self.temp, self.ticket)
+        out = self.bottleneckblock40(out, self.temp, self.ticket)
+        out = self.bottleneckblock41(out, self.temp, self.ticket)
+        out = self.bottleneckblock42(out, self.temp, self.ticket)
+        out = self.avgpool(out)
+        out = out.view(x.size(0), -1)
+        out = self.classifier(out)
         return out
