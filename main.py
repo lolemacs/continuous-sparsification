@@ -124,7 +124,7 @@ def train(outer_round):
         val_acc = test(val_loader)
         #test_acc = test(test_loader)
         remaining_weights = compute_remaining_weights(masks)
-        print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}\tTest acc: {}'.format(model.temp, remaining_weights, val_acc, test_acc))
+        print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
         
 def test(loader):
     model.eval()

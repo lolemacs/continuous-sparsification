@@ -7,7 +7,7 @@ import torch
 
 def generate_loaders(val_set_size, batch_size, n_workers):
     mean, std = [x / 255 for x in [125.3, 123.0, 113.9]],  [x / 255 for x in [63.0, 62.1, 66.7]]
-    train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, padding=4), transforms.ToTensor(), transforms.Normalize(mean, std)])
+    train_transform = transforms.Compose([transforms.ToTensor(), transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, padding=4), transforms.Normalize(mean, std)])
     test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])  
       
     d_fun = datasets.CIFAR10
@@ -49,8 +49,8 @@ def generate_loaders(val_set_size, batch_size, n_workers):
 def ImageNet_generate_loaders(batch_size, n_workers, distributed):
     mean=[0.485, 0.456, 0.406]
     std=[0.229, 0.224, 0.225]
-    train_transform = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), transforms.Normalize(mean, std)])
-    val_transform = transforms.Compose([transforms.Resize(256),transforms.CenterCrop(224),transforms.ToTensor(),transforms.Normalize(mean, std)]) 
+    train_transform = transforms.Compose([transforms.ToTensor(), transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.Normalize(mean, std)])
+    val_transform = transforms.Compose([transforms.ToTensor(),transforms.Resize(256),transforms.CenterCrop(224),transforms.Normalize(mean, std)]) 
       
     n_classes = 1000
     
