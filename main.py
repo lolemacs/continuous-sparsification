@@ -110,7 +110,11 @@ def train(outer_round):
         for optimizer in optimizers: adjust_learning_rate(optimizer, epoch)
 
         for batch_idx, (data, target) in enumerate(train_loader):
-            if args.cuda: data, target = data.cuda(), target.cuda(non_blocking=True)
+            if args.cuda:
+                if args.which_gpu is not None:
+                    data, target = data.cuda(device=args.which_gpu), target.cuda(device=args.which_gpu, non_blocking=True)
+                else:
+                    data, target = data.cuda(), target.cuda(non_blocking=True)
             for optimizer in optimizers: optimizer.zero_grad()
             output = model(data)
             pred = output.max(1)[1]
@@ -132,7 +136,11 @@ def test(loader):
     total = 0.
     with torch.no_grad():
         for data, target in loader:
-            if args.cuda: data, target = data.cuda(), target.cuda(non_blocking=True)
+            if args.cuda:
+                if args.which_gpu is not None:
+                    data, target = data.cuda(device=args.which_gpu), target.cuda(device=args.which_gpu, non_blocking=True)
+                else:
+                    data, target = data.cuda(), target.cuda(non_blocking=True)
             output = model(data)
             pred = output.max(1)[1]
             correct += pred.eq(target.data.view_as(pred)).sum()
