@@ -143,16 +143,6 @@ class ResNet(MaskedNet):
         out = out.view(x.size(0), -1)
         out = self.classifier(out)
         return out
-# function size is temporary
-    def size(self, x):
-        out = F.relu(self.bn0(self.conv0(x, self.temp, self.ticket)), inplace=True)
-        out = self.stage1(out, self.temp, self.ticket)
-        out = self.stage2(out, self.temp, self.ticket)
-        out = self.stage3(out, self.temp, self.ticket)
-        out = self.avgpool(out)
-        out = out.view(x.size(0), -1)
-        size = out.size()
-        return size
 
 #　ImageNet用
 class ResNet50(MaskedNet):
@@ -165,23 +155,22 @@ class ResNet50(MaskedNet):
         self.bn0 = nn.BatchNorm2d(64)
         self.maxpool = nn.MaxPool2d(kernel_size = 3, stride = 2, padding=1)
 
-        # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが3層）。多分気にしなくてよいけれど要考察。
         self.bottleneckblock10 = Bottleneck(Conv, 64, 64)
         self.bottleneckblock11 = Bottleneck(Conv, 256, 64)
         self.bottleneckblock12 = Bottleneck(Conv, 256, 64)
-        # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが4層）
+
         self.bottleneckblock20 = Bottleneck(Conv, 256, 128, stride=2)
         self.bottleneckblock21 = Bottleneck(Conv, 512, 128)
         self.bottleneckblock22 = Bottleneck(Conv, 512, 128)
         self.bottleneckblock23 = Bottleneck(Conv, 512, 128)
-        # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが6層）
+
         self.bottleneckblock30 = Bottleneck(Conv, 512, 256, stride=2)
         self.bottleneckblock31 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock32 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock33 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock34 = Bottleneck(Conv, 1024, 256)
         self.bottleneckblock35 = Bottleneck(Conv, 1024, 256)
-        # まとめる際にはマスクが異なるようにすることに注意（構造が同じ〈マスクは異なる〉ものが3層）
+        
         self.bottleneckblock40 = Bottleneck(Conv, 1024, 512, stride=2)
         self.bottleneckblock41 = Bottleneck(Conv, 2048, 512)
         self.bottleneckblock42 = Bottleneck(Conv, 2048, 512)

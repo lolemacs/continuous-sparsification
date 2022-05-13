@@ -1,5 +1,6 @@
 import sys
 import argparse
+import shutil
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -125,9 +126,20 @@ def train(outer_round):
             for optimizer in optimizers: optimizer.step()
 
         val_acc = test(val_loader)
-        #test_acc = test(test_loader)
+        #test_acc = test(test_loader) 
+        if val_acc > best_acc:
+            best_acc = val_acc
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': 'RestNet50',
+                'state_dict': model.state_dict(),
+                'best_acc1': best_acc,
+                'optimizer': optimizer.state_dict()
+            })
+            
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
+    return best_acc
         
 def test(loader):
     model.eval()
@@ -147,6 +159,10 @@ def test(loader):
     acc = 100. * correct.item() / total
     return acc
 
+def save_checkpoint(state, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    shutil.copyfile(filename, 'model_best.pth.tar')
+
 iters_per_reset = args.epochs-1
 temp_increase = args.final_temp**(1./iters_per_reset)
 
@@ -161,14 +177,16 @@ model.ticket = False
 weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)
 mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
 optimizers = [weight_optim, mask_optim]
-for outer_round in range(args.rounds):
-    print('--------- Round {} -----------'.format(outer_round))
-    train(outer_round)
-    model.temp = 1
-    if outer_round != args.rounds-1: model.prune()
-
+best_acc = 0
+if args.rounds != 1:
+    for outer_round in range(args.rounds):
+        print('--------- Round {} -----------'.format(outer_round))
+        best_acc = train(outer_round, best_acc)
+        model.temp = 1
+        if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
 optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)]
 model.ticket = True
-model.rewind_weights()
-train(outer_round)
+if args.rounds != 1:
+    model.rewind_weights()
+best_acc = train(outer_round, best_acc)
