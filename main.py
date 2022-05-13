@@ -14,7 +14,7 @@ from load_datasets import *
 
 parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
-parser.add_argument('--world-size', type=int, default=4, help='world_size')
+parser.add_argument('--world-size', type=int, default=1, help='world_size')
 parser.add_argument('--rank',type=int, default=1, help='node rank for distributed training')
 parser.add_argument('--distributed', type=bool, default=False,help='use distributed training or not')
 parser.add_argument('--dist-backend', default='nccl', type=str, help='distributed backend')
@@ -59,7 +59,6 @@ print('init_process group is set.')
 
 if args.dataset == 'cifar10':
     train_loader, val_loader, test_loader = generate_loaders(args.val_set_size, args.batch_size, args.workers)
-# TODO:Image Netのテストデータがあるはずなので格納したら対応するclassと以下の出力を書き換える
 elif args.dataset == 'ImageNet':
     train_loader, val_loader = ImageNet_generate_loaders(args.batch_size, args.workers, args.distributed)
 else:
