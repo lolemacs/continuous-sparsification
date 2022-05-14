@@ -101,7 +101,7 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(outer_round):
+def train(outer_round, best_acc):
     for epoch in range(args.epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
         model.train()
