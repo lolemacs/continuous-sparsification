@@ -185,7 +185,7 @@ if args.rounds != 1:
         model.temp = 1
         if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
-optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)]
+#optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)]
 model.ticket = True
 if args.rounds != 1:
     model.rewind_weights()
