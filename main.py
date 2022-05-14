@@ -189,4 +189,4 @@ print('--------- Training final ticket -----------')
 model.ticket = True
 if args.rounds != 1:
     model.rewind_weights()
-best_acc = train(outer_round, best_acc)
+best_acc = train(args.rounds, best_acc)
