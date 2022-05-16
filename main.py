@@ -188,4 +188,4 @@ model.ticket = True
 model.rewind_weights()
 best_acc = 0
 best_acc = train(filename='./final_ticket_checkpoint.pth.tar', args.rounds, best_acc, epochs=1)
-print(final best accuracy is {}.format(best_acc))
+print('final best accuracy is {}'.format(best_acc))
