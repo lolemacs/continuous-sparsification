@@ -100,7 +100,7 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(filename='./checkpoint.pth.tar', outer_round, best_acc, epochs):
+def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
     for epoch in range(epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
         model.train()
@@ -187,5 +187,5 @@ optimizers = [optim.SGD(weight_params, lr=0.00, momentum=0.0, nesterov=False, we
 model.ticket = True
 model.rewind_weights()
 best_acc = 0
-best_acc = train(filename='./final_ticket_checkpoint.pth.tar', args.rounds, best_acc, epochs=1)
+best_acc = train(args.rounds, best_acc, epochs=1, filename='./final_ticket_checkpoint.pth.tar')
 print('final best accuracy is {}'.format(best_acc))
