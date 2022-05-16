@@ -67,7 +67,6 @@ else:
     sys.exit()
 
 # num_class=1000 if dataset is ImageNet, num_classes=10 if dataset is cifar10.
-# （memo）他のデータセット適用の際のinputの変換をoneticket to win them all からちゃんと読み解く必要ある
 model = ResNet50(args.num_classes, args.mask_initial_value)
 print(model)
 if not args.cuda:
@@ -101,8 +100,8 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(outer_round, best_acc):
-    for epoch in range(args.epochs):
+def train(filename='./checkpoint.pth.tar', outer_round, best_acc, epochs):
+    for epoch in range(epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
         model.train()
         if epoch > 0: model.temp *= temp_increase  
@@ -135,7 +134,7 @@ def train(outer_round, best_acc):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc,
                 'optimizer': optimizer.state_dict()
-            })
+            },filename=filename)
             
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
@@ -178,15 +177,15 @@ weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False
 mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
 optimizers = [weight_optim, mask_optim]
 best_acc = 0
-if args.rounds != 1:
-    for outer_round in range(args.rounds):
-        print('--------- Round {} -----------'.format(outer_round))
-        best_acc = train(outer_round, best_acc)
-        model.temp = 1
-        if outer_round != args.rounds-1: model.prune()
+for outer_round in range(args.rounds):
+    print('--------- Round {} -----------'.format(outer_round))
+    best_acc = train(outer_round, best_acc, args.epochs)
+    model.temp = 1
+    if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
-#optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)]
+optimizers = [optim.SGD(weight_params, lr=0.00, momentum=0.0, nesterov=False, weight_decay=args.decay)]
 model.ticket = True
-if args.rounds != 1:
-    model.rewind_weights()
-best_acc = train(args.rounds, best_acc)
+model.rewind_weights()
+best_acc = 0
+best_acc = train(filename='./final_ticket_checkpoint.pth.tar', args.rounds, best_acc, epochs=1)
+print(final best accuracy is {}.format(best_acc))
