@@ -1,4 +1,5 @@
 import sys
+import time
 import argparse
 import shutil
 import torch
@@ -103,6 +104,7 @@ def compute_remaining_weights(masks):
 def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
     for epoch in range(epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
+        start = time.time()
         model.train()
         if epoch > 0: model.temp *= temp_increase  
         if outer_round == 0 and epoch == args.rewind_epoch: model.checkpoint()
@@ -123,8 +125,11 @@ def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
             loss = F.cross_entropy(output, target) + args.lmbda * entries_sum
             loss.backward()
             for optimizer in optimizers: optimizer.step()
-
+        train_time = time.time()
+        train_pr = train_time-start
         val_acc = test(val_loader)
+        val_time = time.time()
+        val_pr = val_time - train_time
         #test_acc = test(test_loader) 
         if val_acc > best_acc:
             best_acc = val_acc
@@ -135,9 +140,12 @@ def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
                 'best_acc1': best_acc,
                 'optimizer': optimizer.state_dict()
             },filename=filename)
-            
+            save_time = time.time()
+            save_pr = save_time-val_time
+        else: save_pr = 0.
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
+        print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))
     return best_acc
         
 def test(loader):
