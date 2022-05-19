@@ -18,6 +18,9 @@ from load_datasets import *
 parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
 parser.add_argement('--output-dir', type=str, default='./', help='output directory')
+parser.add_argument('--resume', type=bool, default=False, help='whether use saving model or not')
+parser.add_argument('--model-path', type=str, default='./model/params.pkl', help='model path')
+parser.add_argument('--start-epoch', type=int, default='3', help='start epoch')
 parser.add_argument('--world-size', type=int, default=1, help='world_size')
 parser.add_argument('--rank',type=int, default=1, help='node rank for distributed training')
 parser.add_argument('--distributed', type=bool, default=False,help='use distributed training or not')
@@ -92,6 +95,21 @@ else:
     model = model.cuda()
 print(model)
 
+if args.resume:
+    input_file = args.output_dir + args.model_path
+    if not args.cuda:
+        checkepoint = torch.load(input_file)
+    else:
+        loc = 'cuda:{}'.format(args.which_gpu)
+        checkpoint = torch.load(args.resume, map_location=loc)
+    args.start_epoch = checkpoint['epoch']
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    scheduler.load_state_dict(checkpoint['scheduler'])
+    print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+else:
+    print('=> no checkpoint found at '{}'".format(args.resume)')
+
 def adjust_learning_rate(optimizer, epoch):
     lr = args.lr
     assert len(args.lr_schedule) == len(args.lr_drops), "length of gammas and schedule should be equal"
@@ -103,7 +121,7 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
+def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pth.tar'):
     for epoch in range(epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
         start = time.time()
@@ -141,7 +159,7 @@ def train(outer_round, best_acc, epochs, filename='./checkpoint.pth.tar'):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc,
                 'optimizer': optimizer.state_dict()
-            },filename=filename)
+            },filename=output_filename)
             save_time = time.time()
             save_pr = save_time-val_time
         else: save_pr = 0.
