@@ -17,7 +17,7 @@ from load_datasets import *
 
 parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
-parser.add_argement('--output-dir', type=str, default='./', help='output directory')
+parser.add_argument('--output-dir', type=str, default='./', help='output directory')
 parser.add_argument('--resume', type=bool, default=False, help='whether use saving model or not')
 parser.add_argument('--model-path', type=str, default='./model/params.pkl', help='model path')
 parser.add_argument('--start-epoch', type=int, default='3', help='start epoch')
@@ -108,7 +108,7 @@ if args.resume:
     scheduler.load_state_dict(checkpoint['scheduler'])
     print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
 else:
-    print('=> no checkpoint found at '{}'".format(args.resume)')
+    print("=> no checkpoint found at '{}".format(args.resume))
 
 def adjust_learning_rate(optimizer, epoch):
     lr = args.lr
@@ -213,7 +213,7 @@ best_acc = 0
 for outer_round in range(args.rounds):
     print('--------- Round {} -----------'.format(outer_round))
     filename = new_dir_path + '/checkpoint.pth.tar'
-    best_acc = train(outer_round, best_acc, args.epochs, filename=filename)
+    best_acc = train(outer_round, best_acc, args.epochs, output_filename=filename)
     model.temp = 1
     if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
