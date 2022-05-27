@@ -19,7 +19,7 @@ class SoftMaskedConv2d(nn.Module):
         self.stride = stride
         
         self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels, kernel_size, kernel_size))
-        nn.init.xavier_normal_(self.weight)
+        nn.init.kaiming_normal_(self.weight)
         self.init_weight = nn.Parameter(torch.zeros_like(self.weight), requires_grad=False)
         self.init_mask()
         
@@ -43,8 +43,8 @@ class SoftMaskedConv2d(nn.Module):
         return out
         
     def checkpoint(self):
-        self.init_weight.data = self.weight.clone()       
-        
+        self.init_weight.data = self.weight.clone()
+
     def rewind_weights(self):
         self.weight.data = self.init_weight.clone()
 
