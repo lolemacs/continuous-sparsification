@@ -82,7 +82,6 @@ class Bottleneck(nn.Module):
 
         if self.downsample is not None:
             residual = self.downsample(residual, temp, ticket)
-            #TODO:確認　論文によると、以下の層は必要ないかも。
             residual = self.bn_d(residual)
 
         out = self.relu(out + residual)
@@ -126,12 +125,12 @@ class ResNet(MaskedNet):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init.xavier_normal_(m.weight)
+                init.kaiming_normal_(m.weight)
             if isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
-                init.xavier_normal_(m.weight)
+                init.kaiming_normal_(m.weight)
                 m.bias.data.zero_()
 
     def forward(self, x):
@@ -182,12 +181,12 @@ class ResNet50(MaskedNet):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init.xavier_normal_(m.weight)
+                init.kaiming_normal_(m.weight)
             if isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
-                init.xavier_normal_(m.weight)
+                init.kaiming_normal_(m.weight)
                 m.bias.data.zero_()
 
     def forward(self, x):
