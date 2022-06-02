@@ -15,12 +15,12 @@ import torch.distributed as dist
 import torch.utils.data.distributed
 from load_datasets import *
 
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
 parser.add_argument('--output-dir', type=str, default='./', help='output directory')
-parser.add_argument('--resume', type=bool, default=False, help='whether use saving model or not')
+parser.add_argument('--resume', type=bool, default=True, help='whether use saving model or not')
 parser.add_argument('--model-path', type=str, default='/checkpoint.pt', help='model path under an output directory')
 parser.add_argument('--start-epoch', type=int, default='3', help='start epoch')
 parser.add_argument('--world-size', type=int, default=1, help='world_size')
@@ -48,9 +48,9 @@ parser.add_argument('--mask-initial-value', type=float, default=-0.01, help='ini
 
 args = parser.parse_args()
 
-run_time + times.times()
-wr_path = args.output_dir + '/runs/' + str(run_time)
-writer = SummaryWriter(wr_path)
+#run_time + times.times()
+#wr_path = args.output_dir + '/runs/' + str(run_time)
+#writer = SummaryWriter(wr_path)
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 num_devices = torch.cuda.device_count()
@@ -82,9 +82,9 @@ else:
 # num_class=1000 if dataset is ImageNet, num_classes=10 if dataset is cifar10.
 model = ResNet50(args.num_classes, args.mask_initial_value)
 
-images, labels = next(iter(train_loader))
-writer.add_graph(model, images)
-writer.close()
+#images, labels = next(iter(train_loader))
+#writer.add_graph(model, images)
+#writer.close()
 
 if not args.cuda:
     print('using CPU, this will be slow')
@@ -182,10 +182,10 @@ def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pt'):
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
         print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))
-        writer.add_scalar('training loss', running_loss / data_num, epoch + 1)
-        writer.add_scalar('training accuracy', running_correct / data_num, epoch + 1)
-        writer.add_scalar('validation accuracy', val_acc, epoch + 1)
-        writer.close()
+        #writer.add_scalar('training loss', running_loss / data_num, epoch + 1)
+        #writer.add_scalar('training accuracy', running_correct / data_num, epoch + 1)
+        #writer.add_scalar('validation accuracy', val_acc, epoch + 1)
+        #writer.close()
         data_num = 0
         running_loss = 0.0
         running_correct = 0
