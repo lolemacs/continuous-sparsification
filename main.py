@@ -246,5 +246,5 @@ model.ticket = True
 model.rewind_weights()
 best_acc = 0
 filename = new_dir_path + '/final_ticket_checkpoint.pt'
-best_acc = train(args.rounds, best_acc, epochs=1, filename=filename)
+best_acc = train(args.rounds, best_acc, epochs=1, output_filename=filename)
 print('final best accuracy is {}'.format(best_acc))
