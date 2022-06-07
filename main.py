@@ -19,6 +19,7 @@ from load_datasets import *
 
 parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or CIFAR-10 with Continuous Sparsification')
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
+parser.add_argument('--input-dir', type=str, default='./', help='input directory if resume is True')
 parser.add_argument('--output-dir', type=str, default='./', help='output directory')
 parser.add_argument('--resume', type=bool, default=True, help='whether use saving model or not')
 parser.add_argument('--model-path', type=str, default='/checkpoint.pt', help='model path under an output directory')
@@ -105,8 +106,10 @@ elif args.which_gpu is not None:
 else:
     model = model.cuda()
 
+print(model)
+
 if args.resume:
-    input_file = args.output_dir + args.model_path 
+    input_file = args.input_dir + args.model_path 
     if not args.cuda:
         checkpoint = torch.load(input_file)
     else:
@@ -131,7 +134,7 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pt'):
+def train(outer_round, best_acc, epochs, output_dir=args.output_dir,filename='/checkpoint.pt'):
     running_loss = 0.0
     running_correct = 0
     for epoch in range(epochs):
@@ -139,7 +142,16 @@ def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pt'):
         start = time.time()
         model.train()
         if epoch > 0: model.temp *= temp_increase  
-        if outer_round == 0 and epoch == args.rewind_epoch: model.checkpoint()
+        if outer_round == 0 and epoch == args.rewind_epoch:
+            model.checkpoint()
+            filename_rewind = output_dir + '/checkpoint_rewind.pt' 
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': 'RestNet50',
+                'state_dict': model.state_dict(),
+                'best_acc1': best_acc,
+                'optimizer': optimizer.state_dict()
+            },filename=filename_rewind)
         for optimizer in optimizers: adjust_learning_rate(optimizer, epoch)
 
         data_num = 0
@@ -162,11 +174,12 @@ def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pt'):
             loss.backward()
             for optimizer in optimizers: optimizer.step()
         train_time = time.time()
-        train_pr = train_time-start
+        train_pr = train_time - start
         val_acc = test(val_loader)
         val_time = time.time()
         val_pr = val_time - train_time
-        #test_acc = test(test_loader) 
+        #test_acc = test(test_loader)
+        best_acc_name = output_dir + filename
         if val_acc > best_acc:
             best_acc = val_acc
             save_checkpoint({
@@ -175,13 +188,14 @@ def train(outer_round, best_acc, epochs, output_filename='./checkpoint.pt'):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc,
                 'optimizer': optimizer.state_dict()
-            },filename=output_filename)
+            },filename=best_acc_name)
             save_time = time.time()
-            save_pr = save_time-val_time
+            save_pr = save_time - val_time
         else: save_pr = 0.
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
-        print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))
+        print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))\
+        print('\t\tTraining loss: {:.1f}\tTraining accuracy: {:.1f}'.format(100 * running_loss / data_num, 100 * running_correct / data_num))
         #writer.add_scalar('training loss', running_loss / data_num, epoch + 1)
         #writer.add_scalar('training accuracy', running_correct / data_num, epoch + 1)
         #writer.add_scalar('validation accuracy', val_acc, epoch + 1)
@@ -213,7 +227,6 @@ def save_checkpoint(state, filename='checkpoint.pt'):
     torch.save(state, filename)
     shutil.copyfile(filename, 'model_best.pt')
 
-
 time_stump = time.time()
 new_dir_path = args.output_dir + str(time_stump)
 os.makedirs(new_dir_path)
@@ -236,8 +249,7 @@ best_acc = 0
 
 for outer_round in range(args.rounds):
     print('--------- Round {} -----------'.format(outer_round))
-    filename = new_dir_path + '/checkpoint.pt'
-    best_acc = train(outer_round, best_acc, args.epochs, output_filename=filename)
+    best_acc = train(outer_round, best_acc, args.epochs, output_dir=new_dir_path)
     model.temp = 1
     if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
@@ -245,6 +257,5 @@ optimizers = [optim.SGD(weight_params, lr=0.00, momentum=0.0, nesterov=False, we
 model.ticket = True
 model.rewind_weights()
 best_acc = 0
-filename = new_dir_path + '/final_ticket_checkpoint.pt'
-best_acc = train(args.rounds, best_acc, epochs=1, output_filename=filename)
+best_acc = train(args.rounds, best_acc, epochs=1, output_dir=new_dir_path, filename='/final_ticket_checkpoint.pt')
 print('final best accuracy is {}'.format(best_acc))
