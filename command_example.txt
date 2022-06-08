@@ -1,3 +1,8 @@
 python3 main.py --ditributed --dist-url 'tcp://10.30.1.11:32804' --dataset ImageNet --world-size 4 --num-classes 1000
 
 python3 main.py --rewind-epoch 6 --output-dir '/mnt/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
+
+python3 main.py --resume True --rewind-epoch 6 --input-dir '/mnt/nfs/sandbox/ai-research_tmp/nakano/output1653968386.3368466' --output-dir '/mnt/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
+
+python3 main.py --resume True --rewind-epoch 6 --input-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output1653968386.3368466' --output-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
+

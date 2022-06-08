@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='Training a ResNet on ImageNet or C
 parser.add_argument('--dataset', type=str, default='cifar10', help='which dataset to use(cifar10 or ImageNet)')
 parser.add_argument('--input-dir', type=str, default='./', help='input directory if resume is True')
 parser.add_argument('--output-dir', type=str, default='./', help='output directory')
-parser.add_argument('--resume', type=bool, default=True, help='whether use saving model or not')
+parser.add_argument('--resume', type=bool, default=False, help='whether use saving model or not')
 parser.add_argument('--model-path', type=str, default='/checkpoint.pt', help='model path under an output directory')
 parser.add_argument('--start-epoch', type=int, default='3', help='start epoch')
 parser.add_argument('--world-size', type=int, default=1, help='world_size')
@@ -108,21 +108,6 @@ else:
 
 print(model)
 
-if args.resume:
-    input_file = args.input_dir + args.model_path 
-    if not args.cuda:
-        checkpoint = torch.load(input_file)
-    else:
-        loc = 'cuda:{}'.format(args.which_gpu)
-        checkpoint = torch.load(args.resume, map_location=loc)
-    args.start_epoch = checkpoint['epoch']
-    model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    scheduler.load_state_dict(checkpoint['scheduler'])
-    print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
-else:
-    print("=> no checkpoint found at '{}".format(args.resume))
-
 def adjust_learning_rate(optimizer, epoch):
     lr = args.lr
     assert len(args.lr_schedule) == len(args.lr_drops), "length of gammas and schedule should be equal"
@@ -134,10 +119,10 @@ def adjust_learning_rate(optimizer, epoch):
 def compute_remaining_weights(masks):
     return 1 - sum(float((m == 0).sum()) for m in masks) / sum(m.numel() for m in masks)
 
-def train(outer_round, best_acc, epochs, output_dir=args.output_dir,filename='/checkpoint.pt'):
+def train(outer_round, best_acc, epochs, start_epoch = 0, output_dir=args.output_dir,filename='/checkpoint.pt'):
     running_loss = 0.0
     running_correct = 0
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         print('\t--------- Epoch {} -----------'.format(epoch))
         start = time.time()
         model.train()
@@ -150,7 +135,8 @@ def train(outer_round, best_acc, epochs, output_dir=args.output_dir,filename='/c
                 'arch': 'RestNet50',
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc,
-                'optimizer': optimizer.state_dict()
+                'weight_optim': optimizers[0].state_dict(),
+                'mask_optim': optimizers[1].state_dict()
             },filename=filename_rewind)
         for optimizer in optimizers: adjust_learning_rate(optimizer, epoch)
 
@@ -187,15 +173,16 @@ def train(outer_round, best_acc, epochs, output_dir=args.output_dir,filename='/c
                 'arch': 'RestNet50',
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc,
-                'optimizer': optimizer.state_dict()
+                'weight_optim': optimizers[0].state_dict(),
+                'mask_optim': optimizers[1].state_dict()
             },filename=best_acc_name)
             save_time = time.time()
             save_pr = save_time - val_time
         else: save_pr = 0.
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
-        print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))\
-        print('\t\tTraining loss: {:.1f}\tTraining accuracy: {:.1f}'.format(100 * running_loss / data_num, 100 * running_correct / data_num))
+        print('\t\tTraining period: {:.1f}\tValidating period: {:.1f}\tSaving: {:.1f}'.format(train_pr, val_pr, save_pr))
+        print('\t\tTraining loss: {:.1f}\tTraining accuracy: {:.1f}'.format(100*running_loss/data_num, 100*running_correct/data_num))
         #writer.add_scalar('training loss', running_loss / data_num, epoch + 1)
         #writer.add_scalar('training accuracy', running_correct / data_num, epoch + 1)
         #writer.add_scalar('validation accuracy', val_acc, epoch + 1)
@@ -245,11 +232,26 @@ model.ticket = False
 weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)
 mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
 optimizers = [weight_optim, mask_optim]
-best_acc = 0 
+best_acc = 0
+
+if args.resume:
+    input_file = args.input_dir + args.model_path 
+    if not args.cuda:
+        checkpoint = torch.load(input_file)
+    else:
+        loc = 'cuda:{}'.format(args.which_gpu)
+        checkpoint = torch.load(input_file, map_location=loc)
+    args.start_epoch = checkpoint['epoch'] - 1
+    model.load_state_dict(checkpoint['state_dict'])
+    # optimizers[0].load_state_dict(checkpoint['weight_optim'])
+    # optimizers[1].load_state_dict(checkpoint['mask_optim'])
+    print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+else:
+    print("=> no checkpoint found at '{}".format(args.resume))
 
 for outer_round in range(args.rounds):
     print('--------- Round {} -----------'.format(outer_round))
-    best_acc = train(outer_round, best_acc, args.epochs, output_dir=new_dir_path)
+    best_acc = train(outer_round, best_acc, args.epochs, args.start_epoch, output_dir=new_dir_path)
     model.temp = 1
     if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
