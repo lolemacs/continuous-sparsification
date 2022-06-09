@@ -221,19 +221,6 @@ os.makedirs(new_dir_path)
 iters_per_reset = args.epochs-1
 temp_increase = args.final_temp**(1./iters_per_reset)
 
-trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-num_params = sum([p.numel() for p in trainable_params])
-print("Total number of parameters: {}".format(num_params))
-
-weight_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mask' not in p[0], model.named_parameters()))
-mask_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mask' in p[0], model.named_parameters()))
-
-model.ticket = False
-weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)
-mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
-optimizers = [weight_optim, mask_optim]
-best_acc = 0
-
 if args.resume:
     input_file = args.input_dir + args.model_path 
     if not args.cuda:
@@ -248,6 +235,19 @@ if args.resume:
     print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
 else:
     print("=> no checkpoint found at '{}".format(args.resume))
+
+trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+num_params = sum([p.numel() for p in trainable_params])
+print("Total number of parameters: {}".format(num_params))
+
+weight_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mask' not in p[0], model.named_parameters()))
+mask_params = map(lambda a: a[1], filter(lambda p: p[1].requires_grad and 'mask' in p[0], model.named_parameters()))
+
+model.ticket = False
+weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.9, nesterov=False, weight_decay=args.decay)
+mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.9, nesterov=False)
+optimizers = [weight_optim, mask_optim]
+best_acc = 0
 
 for outer_round in range(args.rounds):
     print('--------- Round {} -----------'.format(outer_round))
