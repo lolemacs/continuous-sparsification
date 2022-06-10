@@ -4,5 +4,5 @@ python3 main.py --rewind-epoch 6 --output-dir '/mnt/nfs/sandbox/ai-research_tmp/
 
 python3 main.py --resume True --rewind-epoch 6 --input-dir '/mnt/nfs/sandbox/ai-research_tmp/nakano/output1653968386.3368466' --output-dir '/mnt/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
 
-python3 main.py --resume True --rewind-epoch 6 --input-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output1653968386.3368466' --output-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
+python3 main.py --resume True --rewind-epoch 6 --input-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output1654657998.8734207' --output-dir '/home/nakano/nfs/sandbox/ai-research_tmp/nakano/output' --lr 0.025 --dataset ImageNet --num-classes 1000
 

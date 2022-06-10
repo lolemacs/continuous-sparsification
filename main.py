@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import datetime
 import argparse
 import shutil
 import torch
@@ -166,7 +167,7 @@ def train(outer_round, best_acc, epochs, start_epoch = 0, output_dir=args.output
         val_pr = val_time - train_time
         #test_acc = test(test_loader)
         best_acc_name = output_dir + filename
-        if val_acc > best_acc:
+        if val_acc > best_acc and filename='/checkpoint.pt':
             best_acc = val_acc
             save_checkpoint({
                 'epoch': epoch + 1,
@@ -178,6 +179,15 @@ def train(outer_round, best_acc, epochs, start_epoch = 0, output_dir=args.output
             },filename=best_acc_name)
             save_time = time.time()
             save_pr = save_time - val_time
+        else if filename = '/final_ticket_checkpoint.pt':
+            best_acc = val_acc
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': 'RestNet50',
+                'state_dict': model.state_dict(),
+                'best_acc1': best_acc,
+                'weight_optim': optimizers[0].state_dict()
+            })
         else: save_pr = 0.
         remaining_weights = compute_remaining_weights(masks)
         print('\t\tTemp: {:.1f}\tRemaining weights: {:.4f}\tVal acc: {:.1f}'.format(model.temp, remaining_weights, val_acc))
@@ -214,7 +224,7 @@ def save_checkpoint(state, filename='checkpoint.pt'):
     torch.save(state, filename)
     shutil.copyfile(filename, 'model_best.pt')
 
-time_stump = time.time()
+time_stump = datetime.datetime.now()
 new_dir_path = args.output_dir + str(time_stump)
 os.makedirs(new_dir_path)
 
@@ -255,9 +265,7 @@ for outer_round in range(args.rounds):
     model.temp = 1
     if outer_round != args.rounds-1: model.prune()
 print('--------- Training final ticket -----------')
-weight_optim = optim.SGD(weight_params, lr=args.lr, momentum=0.0, nesterov=False, weight_decay=args.decay)
-mask_optim = optim.SGD(mask_params, lr=args.lr, momentum=0.0, nesterov=False)
-optimizers = [weight_optim, mask_optim]
+optimizers = [optim.SGD(weight_params, lr=args.lr, momentum=0.0, nesterov=False, weight_decay=args.decay)]
 model.ticket = True
 model.rewind_weights()
 best_acc = 0
