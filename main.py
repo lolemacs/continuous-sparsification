@@ -225,7 +225,7 @@ def save_checkpoint(state, filename='checkpoint.pt'):
     shutil.copyfile(filename, 'model_best.pt')
 
 time_stump = datetime.datetime.now()
-new_dir_path = args.output_dir + str(time_stump)
+new_dir_path = args.output_dir + str(time_stump.date()) + str(time_stump.time())
 os.makedirs(new_dir_path)
 
 iters_per_reset = args.epochs-1
